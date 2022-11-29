@@ -1,16 +1,18 @@
 <template>
-  <h1>Create Your Own Tier List</h1>
+  <h1>Tier List</h1>
   <div class="tier_container"> 
-    <div class="tier_row" v-for="tier in tiers" :key="tier.id">
-      <div class="tier_header">
+    <div class="tier_row" v-for="(tier, index) in tiers" :key="tier.id">
+      <div class="tier_header" :style="{ backgroundColor: colorize(index)}">
           <span>{{ tier.name || 'Placeholder' }}</span>
       </div>
       <ul 
         class="drop_zone" 
         @drop="onDrop($event, tier.id)"
+        @dragend="onDragEnd($event)"
         @dragenter.prevent
         @dragover.prevent
         >
+        <!-- Ideally I would of conver this into a component but for sake of time and ease, I keep this in the App.vue -->
         <div 
           v-for="game in getTierItems(tier.id)" 
           @dragstart="startDrag($event, game)"
@@ -19,15 +21,17 @@
           class="tier_card"
         >
           <img v-bind:src="game.imgSrc" alt="Card">
+          <!-- End -->
         </div>
       </ul>
     </div>
   </div>
 
-  <h3>Games:</h3>
+  <h2>Games:</h2>
   <div 
     class="tile_bin"
-    @drop="onDrop($event, 0)"
+    @drop="onDrop($event, TIERS.BIN)"
+    @dragend="onDragEnd($event)"
     @dragenter.prevent
     @dragover.prevent
     >
@@ -44,14 +48,14 @@
 </template>
 
 <script setup lang="ts">
-import { inject, onMounted, Ref, ref } from 'vue';
-import { GameService } from './services/games';
-import { default as partyGames } from '../src/services/games.json';
+import { onMounted, Ref, ref } from 'vue';
+import { default as partyGames } from './games.json';
 
+/* Interfaces would go in constants.ts  */
 interface TierCard {
   imgSrc: string, 
   id: number, 
-  list: number, // Add type safety for this list 
+  list: TIERS | number,
 }
 
 interface Tiers {
@@ -65,9 +69,19 @@ enum TIERS {
   LIKE_IT = 2,
   LEAVE_IT = 3,
   HAVENT_PLAYED = 4
+};
+
+const ITEM_ID = 'itemID'
+
+const colors = ['#FF7F7F', '#FFBF7F', '#FFDF7F', '#FFFF7F'];
+
+const colorize = (index: number): string => {
+  const fauxIndex = index % colors.length;
+  return colors[fauxIndex];
 }
 
-let id: number = 1;  // ID Zero is reserved for Bin;
+
+let id: number = 1;
 const tiers: Ref<Tiers[]> = ref([
   { id: id++, name: 'Love it', },
   { id: id++, name: 'Like it', },
@@ -78,34 +92,40 @@ const tiers: Ref<Tiers[]> = ref([
 const games: Ref<TierCard[]> = ref([]);
 
 onMounted(async () => {
-  const _games = await getGames() as { imgSrc: string }[];
-  games.value = _games.map((game, index) => ({ ...game, id: index, list: TIERS.BIN })); 
-  // Implememnt local storage
+  const { allGames: _allGames } = await getGames();
+  games.value = _allGames.map((game, index) => ({ ...game, id: index, list: TIERS.BIN })); 
 });
 
 
-const getTierItems = (_list: number): TierCard[] => { // add ts TIERS
+const getTierItems = (_list: TIERS): TierCard[] => { 
   return games.value.filter(({ list }) => _list === list); 
 }
 
-const startDrag = (event: DragEvent, game: any): void => { // Add type later...
+const startDrag = (event: DragEvent, game: TierCard): void => {
   console.log(`Grabbing Item from list: ${JSON.stringify(game)}`);
+  (event.target as HTMLElement).style.opacity = '0.4';
+
   event.dataTransfer!.dropEffect = 'move';
   event.dataTransfer!.effectAllowed = 'move';
-  event.dataTransfer!.setData('itemId', game.id)
+  event.dataTransfer!.setData(ITEM_ID, String(game.id));
 };
 
-const onDrop = (event: DragEvent, list: number): void => {
-  const dropItemID = event.dataTransfer!.getData('itemId');
+const onDrop = (event: DragEvent, list: TIERS): void => {
+  const dropItemID = event.dataTransfer!.getData(ITEM_ID);
   const dropItem = games.value.find(game => `${game.id}` === dropItemID);
   dropItem!.list = list;
 }
 
-const getGames = async () => { //Mocking Fetch Data
+const onDragEnd = (event: DragEvent) => {
+  (event.target as HTMLElement).style.opacity = '1';
+}
+
+//Mocking Fetch Data
+const getGames = async (): Promise<{ allGames: { imgSrc: string }[] }> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => resolve({
-      games: partyGames.games
-    }), Math.random() * 1000)
+      allGames: partyGames.allGames
+    }), 150)
   })
 }
 
@@ -115,22 +135,30 @@ const getGames = async () => { //Mocking Fetch Data
 .tier_container {
   display: flex;
   flex-direction: column;
-  border: 1px solid white;
+  gap: 2px;
+  width: 980px;
+  border: 2px solid white;
+  border-radius: 4px;
 }
 
 .tile_bin {
-  border: 1px solid white;
+  border: 2px solid white;
+  width: 980px;
+  border-radius: 4px;
   display: grid;
-  grid-template: repeat(5, 1fr) / repeat(9, 100px);
+  grid-template: repeat(9, auto) / repeat(5, 1fr);
   gap: 0.5rem;
+  padding: 0.5rem;
+  place-items: center;
 }
 
 
 .tier_row  {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    min-height: 80px;
+    background-color: #404040;
+    gap: 1px;
+    min-height: 104px;
 }
 
 .drop_zone {
@@ -140,20 +168,22 @@ const getGames = async () => { //Mocking Fetch Data
     list-style-type: none;
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 2px;
     height: 100%;
-    border: 1px solid pink;
+}
+
+.tier_card {
+  display: flex;
 }
 
 .drop_zone .tier_card {
-  flex-basis: 23%;
+  flex-basis: 24%;
 }
 
 .tier_header {
-    min-width: 100px;
-    width: 100px;
+    flex-basis: 20%;
     min-height: 80px;
-    border: 1px solid red;
+    color: black;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -163,8 +193,9 @@ const getGames = async () => { //Mocking Fetch Data
 }
 
 img {
-  max-width: 100%;
+  width: 100%;
   height: auto;
+  aspect-ratio: 16/9;
 }
 
 </style>

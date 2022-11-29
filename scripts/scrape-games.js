@@ -30,10 +30,10 @@ function scrapeImgs() {
 	return partyGames;
 }
 
-const games = await getPartyGames();
-const _json = JSON.stringify({ games }, null, 4);
+const allGames = await getPartyGames();
+const _json = JSON.stringify({ allGames }, null, 4);
 
-fs.writeFile('../src/services/games.json', _json, 'utf8', (err, data) => {
+fs.writeFile('./src/games.json', _json, 'utf8', (err, data) => {
 	if (err) {
 		console.log(err);
 	} else {
