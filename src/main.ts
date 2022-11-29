@@ -4,5 +4,5 @@ import App from './App.vue'
 import { GameService } from './services/games';
 
 const app = createApp(App);
-app.provide('gameService', new GameService());
+// app.provide('gameService', new GameService());
 app.mount('#app');
