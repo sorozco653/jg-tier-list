@@ -1,5 +1,9 @@
 ## Notes
 
+This is a Tier List of Jackbox Games using Vue + Drag and Drop API. There are other librarys such as SortableJS or VueDraggable that would made things a little easier, but this is a fun learning experience 🙂
+
+NodeJs v16 is a requirement for launching this project.
+
 To launch the project:
 1. npm run instal
 2. npm run dev

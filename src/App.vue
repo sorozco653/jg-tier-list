@@ -9,6 +9,7 @@
         class="drop_zone" 
         @drop="onDrop($event, tier.id)"
         @dragend="onDragEnd($event)"
+        @drag="onDragOver($event)"
         @dragenter.prevent
         @dragover.prevent
         >
@@ -32,6 +33,7 @@
     class="tile_bin"
     @drop="onDrop($event, TIERS.BIN)"
     @dragend="onDragEnd($event)"
+    @drag="onDragOver($event)"
     @dragenter.prevent
     @dragover.prevent
     >
@@ -101,12 +103,14 @@ const getTierItems = (_list: TIERS): TierCard[] => {
   return games.value.filter(({ list }) => _list === list); 
 }
 
+let currentIndex: number | null = null;
 const startDrag = (event: DragEvent, game: TierCard): void => {
   console.log(`Grabbing Item from list: ${JSON.stringify(game)}`);
   (event.target as HTMLElement).style.opacity = '0.4';
 
   event.dataTransfer!.dropEffect = 'move';
   event.dataTransfer!.effectAllowed = 'move';
+  currentIndex = game.id
   event.dataTransfer!.setData(ITEM_ID, String(game.id));
 };
 
@@ -118,6 +122,24 @@ const onDrop = (event: DragEvent, list: TIERS): void => {
 
 const onDragEnd = (event: DragEvent) => {
   (event.target as HTMLElement).style.opacity = '1';
+  currentIndex = null;
+}
+
+const onDragOver = (event: DragEvent) => {
+  const selectedItem = (event.target as HTMLElement),
+        list = selectedItem!.parentNode,
+        x = event.clientX,
+        y = event.clientY;
+
+  let swapItem = document.elementFromPoint(x, y) === null ? selectedItem : document.elementFromPoint(x, y)!;
+  let newList = (document.elementFromPoint(x, y) as HTMLElement).closest('.drop_zone, .tile_bin')
+ 
+  if (list === swapItem!.parentNode) {
+    swapItem = swapItem !== selectedItem!.nextSibling ? swapItem : swapItem!.nextSibling as HTMLElement;
+    list!.insertBefore(selectedItem as Node, swapItem);
+  } else if (newList && !newList.contains(selectedItem)) {
+    newList?.append(selectedItem as Node);
+  }
 }
 
 //Mocking Fetch Data
@@ -196,6 +218,7 @@ img {
   width: 100%;
   height: auto;
   aspect-ratio: 16/9;
+  pointer-events: none;
 }
 
 </style>
